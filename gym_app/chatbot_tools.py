@@ -1087,7 +1087,9 @@ class ChatbotTools:
             return self.get_membership_growth_report(period)
 
         # Attendance queries (handles: checkin/checkins, check-in/check-ins, visit/visits)
-        if QueryNormalizer.matches_any_variation(query, ['attendance', 'checkin', 'visit', 'peak hour', 'busy']):
+        # Also handle "who checked in today" pattern
+        if (QueryNormalizer.matches_any_variation(query, ['attendance', 'checkin', 'visit', 'peak hour', 'busy']) or
+            'who checked in' in query_lower or 'checked in today' in query_lower):
             if 'today' in query_lower or 'who checked in' in query_lower:
                 return self.get_todays_checkins()
             period = self._extract_period(query_lower)
