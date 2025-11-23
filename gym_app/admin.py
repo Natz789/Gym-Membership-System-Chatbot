@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, MembershipPlan, FlexibleAccess, UserMembership, Payment, WalkInPayment,
-    Analytics, Attendance, ChatbotConfig, Conversation, ConversationMessage
+    Analytics, Attendance, Conversation, ConversationMessage
 )
 from .models import AuditLog
 
@@ -280,42 +280,6 @@ class AttendanceAdmin(admin.ModelAdmin):
     status.short_description = 'Status'
 
 
-
-
-@admin.register(ChatbotConfig)
-class ChatbotConfigAdmin(admin.ModelAdmin):
-    """Admin interface for Chatbot Configuration"""
-
-    list_display = ['id', 'active_model', 'temperature', 'max_tokens', 'enable_streaming', 'enable_persistence', 'updated_at']
-
-    fieldsets = (
-        ('Model Configuration', {
-            'fields': ('active_model',),
-            'description': 'Select the Ollama model to use for chatbot responses'
-        }),
-        ('Model Parameters', {
-            'fields': ('temperature', 'top_p', 'max_tokens', 'context_window'),
-            'description': 'Fine-tune how the chatbot generates responses'
-        }),
-        ('Features', {
-            'fields': ('enable_streaming', 'enable_persistence'),
-            'description': 'Enable or disable chatbot features'
-        }),
-        ('Connection Settings', {
-            'fields': ('ollama_host', 'timeout_seconds'),
-            'description': 'Configure connection to Ollama service'
-        }),
-    )
-
-    readonly_fields = ['updated_at', 'updated_by']
-
-    def has_delete_permission(self, request, obj=None):
-        """Prevent deletion of config (singleton)"""
-        return False
-
-    def has_add_permission(self, request):
-        """Only allow one config to exist"""
-        return not ChatbotConfig.objects.exists()
 
 
 @admin.register(Conversation)
