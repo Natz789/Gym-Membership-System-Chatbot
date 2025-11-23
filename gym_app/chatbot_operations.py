@@ -149,14 +149,28 @@ class OperationsExecutor:
             elif '@' in str(member_identifier):
                 member = User.objects.get(email=member_identifier, role='member')
             else:
-                # Search by name
-                member = User.objects.filter(
-                    role='member'
-                ).filter(
-                    Q(first_name__icontains=member_identifier) |
-                    Q(last_name__icontains=member_identifier) |
-                    Q(username=member_identifier)
-                ).first()
+                # Search by name - handle full names (first + last)
+                name_parts = member_identifier.strip().split()
+
+                if len(name_parts) >= 2:
+                    # Full name provided (e.g., "Angelina Torres" or "Joshua Reyes")
+                    first_name = name_parts[0]
+                    last_name = ' '.join(name_parts[1:])  # Handle middle names
+
+                    member = User.objects.filter(
+                        role='member',
+                        first_name__icontains=first_name,
+                        last_name__icontains=last_name
+                    ).first()
+                else:
+                    # Single name provided - search first, last, or username
+                    member = User.objects.filter(
+                        role='member'
+                    ).filter(
+                        Q(first_name__icontains=member_identifier) |
+                        Q(last_name__icontains=member_identifier) |
+                        Q(username=member_identifier)
+                    ).first()
 
                 if not member:
                     return {'error': f'Member not found: {member_identifier}'}
