@@ -16,8 +16,7 @@ from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 from gym_app.models import (
     User, MembershipPlan, FlexibleAccess, UserMembership,
-    Payment, WalkInPayment, Analytics, AuditLog, Attendance,
-    ChatbotConfig
+    Payment, WalkInPayment, Analytics, AuditLog, Attendance
 )
 from decimal import Decimal
 from datetime import datetime, timedelta, date
@@ -65,7 +64,6 @@ class Command(BaseCommand):
         self.create_attendance_records()
         self.create_analytics()
         self.create_audit_logs()
-        self.initialize_chatbot_config()
 
         self.print_summary()
         self.save_credentials_file()
@@ -648,13 +646,6 @@ class Command(BaseCommand):
             created_count += 1
 
         self.stdout.write(f'   ✓ Created {created_count} audit logs\n')
-
-    def initialize_chatbot_config(self):
-        """Initialize chatbot configuration"""
-        self.stdout.write(self.style.SUCCESS('🤖 Initializing Chatbot Config...\n'))
-
-        config = ChatbotConfig.get_config()
-        self.stdout.write(f'   ✓ Chatbot config ready (Model: {config.active_model})\n')
 
     def print_summary(self):
         """Print summary of seeded data"""

@@ -72,12 +72,6 @@ urlpatterns = [
     path('chatbot/', views.chatbot_view, name='chatbot'),
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
     path('api/chatbot/suggestions/', views.chatbot_suggestions, name='chatbot_suggestions'),
-
-    # Chatbot Configuration (Admin)
-    path('chatbot/config/', views.chatbot_config_view, name='chatbot_config'),
-    path('api/chatbot/config/update/', views.chatbot_config_update, name='chatbot_config_update'),
-    path('api/chatbot/models/', views.chatbot_models_list, name='chatbot_models_list'),
-    path('api/chatbot/models/switch/', views.chatbot_model_switch, name='chatbot_model_switch'),
     path('api/chatbot/conversations/', views.chatbot_conversations_list, name='chatbot_conversations_list'),
 
     # Hero Section Management (Admin)

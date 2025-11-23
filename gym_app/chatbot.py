@@ -1,11 +1,12 @@
 """
 Enhanced AI Chatbot Engine for Rhose Gym
 Advanced capabilities: Analytics, Operations, Member Management
-Supports dynamic model switching, conversation persistence, and streaming responses
+Permanently configured with Qwen2.5-0.5B model
 Optimized for E595 ThinkPad (8-16GB RAM)
 Performance optimized with caching for faster response times
 
-Version 2.0 - Enhanced Features:
+Version 3.0 - Simplified Configuration:
+- Hardcoded Qwen2.5-0.5B model (ultra-fast, 4GB RAM)
 - Intent detection and intelligent routing
 - Advanced analytics and reporting
 - Member lookup and management
@@ -21,7 +22,7 @@ from django.conf import settings
 from django.core.cache import cache
 from .models import (
     User, MembershipPlan, FlexibleAccess, UserMembership, Payment, Attendance,
-    ChatbotConfig, Conversation, ConversationMessage, AuditLog
+    Conversation, ConversationMessage, AuditLog
 )
 from .chatbot_tools import ChatbotTools
 from .chatbot_analytics import AnalyticsEngine
@@ -30,13 +31,23 @@ import json
 
 
 class GymChatbot:
-    """AI-powered chatbot for gym assistance with dynamic configuration"""
+    """AI-powered chatbot for gym assistance - Permanently configured with Qwen2.5-0.5B"""
+
+    # Hardcoded configuration for Qwen2.5-0.5B model
+    MODEL = 'qwen2.5:0.5b'
+    TEMPERATURE = 0.7
+    TOP_P = 0.9
+    MAX_TOKENS = 512
+    CONTEXT_WINDOW = 6
+    ENABLE_STREAMING = False
+    ENABLE_PERSISTENCE = True
+    OLLAMA_HOST = 'http://localhost:11434'
+    TIMEOUT_SECONDS = 30
 
     def __init__(self, user=None, conversation_id=None, session_key=None):
         self.user = user
         self.session_key = session_key
-        self.config = ChatbotConfig.get_config()
-        self.model = self.config.active_model
+        self.model = self.MODEL
         self.conversation = None
         self.conversation_history = []
 
@@ -46,7 +57,7 @@ class GymChatbot:
         # Load or create conversation
         if conversation_id:
             self._load_conversation(conversation_id)
-        elif self.config.enable_persistence:
+        elif self.ENABLE_PERSISTENCE:
             self._create_conversation()
 
     def _load_conversation(self, conversation_id):
@@ -86,7 +97,7 @@ class GymChatbot:
 
     def _save_message(self, role, content, response_time_ms=None):
         """Save message to database if persistence is enabled"""
-        if self.config.enable_persistence and self.conversation:
+        if self.ENABLE_PERSISTENCE and self.conversation:
             ConversationMessage.objects.create(
                 conversation=self.conversation,
                 role=role,
@@ -97,6 +108,15 @@ class GymChatbot:
             # Generate title from first user message
             if role == 'user' and not self.conversation.title:
                 self.conversation.generate_title()
+
+    @classmethod
+    def get_ollama_options(cls):
+        """Get formatted options for Ollama API"""
+        return {
+            'temperature': cls.TEMPERATURE,
+            'top_p': cls.TOP_P,
+            'num_predict': cls.MAX_TOKENS,
+        }
 
     @staticmethod
     def _get_static_base_context():
@@ -476,7 +496,7 @@ COMMON MISTAKES:
                 context_window = 0
             # Default
             else:
-                context_window = min(self.config.context_window, 2)
+                context_window = min(self.CONTEXT_WINDOW, 2)
 
             # Add only the necessary messages
             if context_window > 0:
@@ -492,13 +512,13 @@ COMMON MISTAKES:
             # ========== OPTIMIZE OLLAMA PARAMETERS ==========
             # BEFORE: max_tokens=512 (default)
             # AFTER: max_tokens=256 (50% reduction for short responses)
-            ollama_options = self.config.get_ollama_options()
+            ollama_options = self.get_ollama_options()
 
             # Override max_tokens for faster responses (queries are usually simple)
             # Short responses: 256 tokens (~1000 chars) is sufficient
             ollama_options['num_predict'] = 256
 
-            if self.config.enable_streaming:
+            if self.ENABLE_STREAMING:
                 # Streaming response
                 return self._chat_stream(messages, user_message, start_time, intent)
             else:
@@ -571,7 +591,7 @@ COMMON MISTAKES:
             stream = ollama.chat(
                 model=self.model,
                 messages=messages,
-                options=self.config.get_ollama_options(),
+                options=self.get_ollama_options(),
                 stream=True
             )
 

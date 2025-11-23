@@ -16,7 +16,7 @@ from django.contrib.auth.hashers import make_password
 from gym_app.models import (
     User, MembershipPlan, FlexibleAccess, UserMembership,
     Payment, WalkInPayment, Analytics, AuditLog, Attendance,
-    LoginActivity, ChatbotConfig, Conversation, ConversationMessage
+    LoginActivity, Conversation, ConversationMessage
 )
 from decimal import Decimal
 from datetime import datetime, timedelta, date
@@ -65,7 +65,6 @@ class Command(BaseCommand):
         self.create_walk_in_payments()
         self.create_attendance_records()
         self.create_login_activity()
-        self.create_chatbot_config()
         self.create_conversations()
         self.create_analytics()
         self.create_comprehensive_audit_logs()
@@ -101,11 +100,7 @@ class Command(BaseCommand):
         # Delete plans and passes
         MembershipPlan.objects.all().delete()
         FlexibleAccess.objects.all().delete()
-        self.stdout.write(f'   ✓ Deleted all plans and passes')
-
-        # Reset ChatbotConfig
-        ChatbotConfig.objects.all().delete()
-        self.stdout.write(f'   ✓ Reset chatbot configuration\n')
+        self.stdout.write(f'   ✓ Deleted all plans and passes\n')
 
     def create_admin_users(self):
         """Create 3 admin users"""
@@ -750,34 +745,14 @@ class Command(BaseCommand):
         self.stdout.write(f'   ℹ Successful: {created_count - failed_count}')
         self.stdout.write(f'   ℹ Failed: {failed_count}\n')
 
-    def create_chatbot_config(self):
-        """Create chatbot configuration"""
-        self.stdout.write(self.style.SUCCESS('🤖 Creating Chatbot Configuration...\n'))
-
-        config = ChatbotConfig.get_config()
-        admin = User.objects.filter(role='admin').first()
-
-        config.active_model = 'llama3.2:1b'
-        config.temperature = 0.7
-        config.top_p = 0.9
-        config.max_tokens = 512
-        config.context_window = 6
-        config.enable_streaming = False
-        config.enable_persistence = True
-        config.ollama_host = 'http://localhost:11434'
-        config.timeout_seconds = 30
-        config.updated_by = admin
-        config.save()
-
-        self.stdout.write(f'   ✓ Configured chatbot with model: {config.get_active_model_display()}\n')
-
     def create_conversations(self):
         """Create chatbot conversations with messages"""
         self.stdout.write(self.style.SUCCESS('💬 Creating Chatbot Conversations...\n'))
 
         members = list(User.objects.filter(role='member')[:20])  # Use 20 members
         staff = list(User.objects.filter(role='staff'))
-        config = ChatbotConfig.get_config()
+        # Hardcoded model (permanently configured to Qwen2.5-0.5B)
+        active_model = 'qwen2.5:0.5b'
 
         conversation_topics = [
             {
@@ -828,7 +803,7 @@ class Command(BaseCommand):
                 conversation = Conversation.objects.create(
                     user=member,
                     conversation_id=conversation_id,
-                    model_used=config.active_model,
+                    model_used=active_model,
                     session_key=None
                 )
 
@@ -1043,7 +1018,7 @@ class Command(BaseCommand):
             ('🤖 CHATBOT', ''),
             ('   ├─ Conversations', Conversation.objects.count()),
             ('   ├─ Messages', ConversationMessage.objects.count()),
-            ('   └─ Active Model', ChatbotConfig.get_config().get_active_model_display()),
+            ('   └─ Active Model', 'Qwen 2.5 0.5B (Permanent)'),
             ('', ''),
             ('📈 ANALYTICS RECORDS', Analytics.objects.count()),
             ('📝 AUDIT LOGS', AuditLog.objects.count()),

@@ -188,14 +188,22 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 # ==================== Chatbot Performance Settings ====================
-# These settings optimize the chatbot for your E595 ThinkPad
+# Permanently configured with Qwen2.5-0.5B model (ultra-fast, 4GB RAM)
 
 # Ollama Configuration
 OLLAMA_HOST = 'http://localhost:11434'
 OLLAMA_TIMEOUT = 30  # seconds
+OLLAMA_MODEL = 'qwen2.5:0.5b'  # Permanently set to Qwen2.5-0.5B
+
+# Chatbot Model Parameters
+CHATBOT_TEMPERATURE = 0.7  # Creativity level (0.0-1.0)
+CHATBOT_TOP_P = 0.9  # Nucleus sampling
+CHATBOT_MAX_TOKENS = 512  # Maximum response length in tokens
+CHATBOT_CONTEXT_WINDOW = 6  # Messages to keep in context
+CHATBOT_ENABLE_STREAMING = False  # Streaming responses disabled
+CHATBOT_ENABLE_PERSISTENCE = True  # Save conversation history
 
 # Chatbot Performance Tuning
-CHATBOT_MAX_CONTEXT_WINDOW = 6  # messages to keep in context
 CHATBOT_CACHE_DURATION_SHORT = 120  # 2 minutes
 CHATBOT_CACHE_DURATION_MEDIUM = 600  # 10 minutes
 CHATBOT_CACHE_DURATION_LONG = 3600  # 1 hour
