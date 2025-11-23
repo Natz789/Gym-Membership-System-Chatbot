@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4yj)609$72ppy!&e527=wsgm9+_sasg^3^)r263)ykovwj_c(r'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-4yj)609$72ppy!&e527=wsgm9+_sasg^3^)r263)ykovwj_c(r')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['192.168.0.156', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='192.168.0.156,127.0.0.1,localhost').split(',')
 
 
 # Application definition
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # For static file serving
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -75,12 +77,27 @@ WSGI_APPLICATION = 'gym_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Support both SQLite (development) and PostgreSQL (production)
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
+    # Production: PostgreSQL on Render
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Development: SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Custom User Model
@@ -121,13 +138,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+if os.path.exists(os.path.join(BASE_DIR, 'static')):
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+else:
+    STATICFILES_DIRS = []
+
+# WhiteNoise compression for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (uploaded content)
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -191,9 +214,9 @@ SESSION_CACHE_ALIAS = 'default'
 # Permanently configured with Qwen2.5-0.5B model (ultra-fast, 4GB RAM)
 
 # Ollama Configuration
-OLLAMA_HOST = 'http://localhost:11434'
-OLLAMA_TIMEOUT = 30  # seconds
-OLLAMA_MODEL = 'qwen2.5:0.5b'  # Permanently set to Qwen2.5-0.5B
+OLLAMA_HOST = config('OLLAMA_HOST', default='http://localhost:11434')
+OLLAMA_TIMEOUT = config('OLLAMA_TIMEOUT', default=30, cast=int)  # seconds
+OLLAMA_MODEL = config('OLLAMA_MODEL', default='qwen2.5:0.5b')  # Permanently set to Qwen2.5-0.5B
 
 # Chatbot Model Parameters
 CHATBOT_TEMPERATURE = 0.7  # Creativity level (0.0-1.0)
