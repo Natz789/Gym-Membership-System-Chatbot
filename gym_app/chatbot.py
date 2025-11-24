@@ -66,8 +66,19 @@ class GymChatbot:
         # Try to initialize Groq first (production)
         if self.groq_api_key and GROQ_AVAILABLE:
             try:
-                self.groq_client = GroqClient(api_key=self.groq_api_key)
+                # Initialize Groq client with explicit parameters
+                self.groq_client = GroqClient(api_key=self.groq_api_key, timeout=30.0)
                 self.use_groq = True
+                print(f"Groq client initialized successfully")
+            except TypeError as e:
+                # Handle version compatibility issues
+                print(f"Groq initialization TypeError: {str(e)}")
+                try:
+                    # Fallback: try simpler initialization
+                    self.groq_client = GroqClient(api_key=self.groq_api_key)
+                    self.use_groq = True
+                except Exception as e2:
+                    print(f"Failed to initialize Groq (fallback): {str(e2)}")
             except Exception as e:
                 print(f"Failed to initialize Groq: {str(e)}")
                 pass
