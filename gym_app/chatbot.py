@@ -1,11 +1,12 @@
 """
 Enhanced AI Chatbot Engine for Rhose Gym
-Powered entirely by Groq API for ultra-fast inference
 Advanced capabilities: Analytics, Operations, Member Management
-Optimized for production deployment
+Permanently configured with Qwen2.5-0.5B model
+Optimized for E595 ThinkPad (8-16GB RAM)
+Performance optimized with caching for faster response times
 
-Version 4.0 - Groq API Only:
-- Uses Groq's llama-3.3-70b-versatile model (fast & powerful)
+Version 3.0 - Simplified Configuration:
+- Hardcoded Qwen2.5-0.5B model (ultra-fast, 4GB RAM)
 - Intent detection and intelligent routing
 - Advanced analytics and reporting
 - Member lookup and management
@@ -14,6 +15,7 @@ Version 4.0 - Groq API Only:
 - Audit logging for all operations
 """
 
+import ollama
 import uuid
 import time
 from django.conf import settings
@@ -33,25 +35,20 @@ try:
     GROQ_AVAILABLE = True
 except ImportError:
     GROQ_AVAILABLE = False
-    raise ImportError("Groq library not installed. Install with: pip install groq")
 
 
 class GymChatbot:
-    """AI-powered chatbot for gym assistance - Powered by Groq API"""
+    """AI-powered chatbot for gym assistance - Permanently configured with Qwen2.5-0.5B"""
 
-    # Groq API Configuration
-    MODEL = 'llama-3.3-70b-versatile'  # Fast and powerful
-    # Alternative models available:
-    # - 'llama-3.1-70b-versatile' (also fast)
-    # - 'mixtral-8x7b-32768' (larger context)
-    # - 'gemma2-9b-it' (efficient)
-    
+    # Hardcoded configuration for Qwen2.5-0.5B model
+    MODEL = 'qwen2.5:0.5b'
     TEMPERATURE = 0.7
     TOP_P = 0.9
     MAX_TOKENS = 512
     CONTEXT_WINDOW = 6
     ENABLE_STREAMING = False
     ENABLE_PERSISTENCE = True
+    OLLAMA_HOST = 'http://localhost:11434'
     TIMEOUT_SECONDS = 30
 
     def __init__(self, user=None, conversation_id=None, session_key=None):
@@ -61,24 +58,16 @@ class GymChatbot:
         self.conversation = None
         self.conversation_history = []
 
-        # Initialize Groq client
+        # Initialize LLM client (Groq for production, Ollama for local)
+        self.use_groq = False
+        self.groq_client = None
         groq_api_key = config('GROQ_API_KEY', default=None)
-        if not groq_api_key:
-            raise ValueError(
-                "GROQ_API_KEY not found in environment variables. "
-                "Please add GROQ_API_KEY to your .env file. "
-                "Get your free API key at: https://console.groq.com/keys"
-            )
-        
-        if not GROQ_AVAILABLE:
-            raise ImportError(
-                "Groq library not installed. Install with: pip install groq"
-            )
-        
-        try:
-            self.groq_client = GroqClient(api_key=groq_api_key)
-        except Exception as e:
-            raise ConnectionError(f"Failed to initialize Groq client: {str(e)}")
+        if GROQ_AVAILABLE and groq_api_key:
+            try:
+                self.groq_client = GroqClient(api_key=groq_api_key)
+                self.use_groq = True
+            except Exception:
+                pass
 
         # Initialize tools for advanced features
         self.tools = ChatbotTools(user)
@@ -137,6 +126,15 @@ class GymChatbot:
             # Generate title from first user message
             if role == 'user' and not self.conversation.title:
                 self.conversation.generate_title()
+
+    @classmethod
+    def get_ollama_options(cls):
+        """Get formatted options for Ollama API"""
+        return {
+            'temperature': cls.TEMPERATURE,
+            'top_p': cls.TOP_P,
+            'num_predict': cls.MAX_TOKENS,
+        }
 
     @staticmethod
     def _get_static_base_context():
@@ -390,6 +388,7 @@ COMMON MISTAKES:
         start_time = time.time()
 
         # OPTIMIZATION #1: Check FAQ database FIRST - instant response (<10ms)
+        # This should be done BEFORE any other processing
         from .chatbot_tools import FAQFastPath
         faq_answer, faq_score = FAQFastPath.find_faq_match(user_message)
         if faq_answer:
@@ -438,34 +437,46 @@ COMMON MISTAKES:
                     "response_time_ms": int((time.time() - start_time) * 1000)
                 }
 
-        # Step 3: If tools didn't handle it, use Groq AI chatbot
-        return self._chat_with_groq(user_message, start_time, intent)
+        # Step 3: If tools didn't handle it, use AI chatbot
+        return self._chat_with_ai(user_message, start_time, intent)
 
-    def _chat_with_groq(self, user_message, start_time, intent='informational'):
+    def _chat_with_ai(self, user_message, start_time, intent='informational'):
         """
-        Chat with Groq API with optimized context
+        PERFORMANCE OPTIMIZATION #2: Reduce Ollama Context Size
 
         Optimizations:
         1. Intent-based context loading (minimal for FAQs, none for analytics)
         2. Reduce conversation history to 0-2 messages based on query type
         3. Strip unnecessary information from system prompts
-        4. Use max_tokens=512 for responses
+        4. Use max_tokens=256 for short responses (50% reduction)
+
+        Expected improvement:
+        - Memory usage: -40%
+        - Processing time: -30-40%
+        - Token consumption: -60%
         """
+        # BEFORE: Full context for all queries
+        # AFTER: Intent-based context optimization
+
         system_context = ""
 
         # ========== INTENT-BASED CONTEXT LOADING ==========
+        # Analytical queries: Minimal context (just role-based info)
         if intent == 'analytical':
             system_context = "You are FitBot, a gym customer service assistant. Answer briefly and concisely."
 
+        # Operational queries: Minimal context
         elif intent == 'operational':
             system_context = "You are FitBot, a gym system assistant. Provide clear, direct answers."
 
+        # Informational/FAQ fallback: Standard but reduced context
         elif intent == 'informational':
             system_context = self._get_static_base_context()
             # Only add fitness knowledge if explicitly requested
             if any(kw in user_message.lower() for kw in ['workout', 'exercise', 'fitness', 'training', 'gym tips']):
                 system_context += self.get_fitness_knowledge()
 
+        # Member lookup: User-specific context only
         elif intent == 'member_lookup':
             if self.user and self.user.is_authenticated:
                 system_context = f"You are FitBot. The current user is {self.user.get_full_name()} ({self.user.role})."
@@ -476,7 +487,7 @@ COMMON MISTAKES:
         if self.user and self.user.is_staff_or_admin():
             system_context += "\nYou can help with analytics, operations, and member management."
 
-        # Prepare messages for Groq
+        # Prepare messages for Ollama
         messages = [
             {
                 "role": "system",
@@ -484,19 +495,28 @@ COMMON MISTAKES:
             }
         ]
 
-        # ========== REDUCE CONVERSATION HISTORY ==========
+        # ========== REDUCE CONVERSATION HISTORY (OPTIMIZATION) ==========
+        # BEFORE: Context window of 6 messages (or 3 for analytical)
+        # AFTER: Dynamic context window based on intent
+
         if len(self.conversation_history) > 0:
+            # Analytical: No history (fresh analysis every time)
             if intent == 'analytical':
                 context_window = 0
+            # Operational: Last message only
             elif intent == 'operational':
                 context_window = 1
+            # Informational: Last 1-2 messages max
             elif intent == 'informational':
                 context_window = 2
+            # Member lookup: No history needed
             elif intent == 'member_lookup':
                 context_window = 0
+            # Default
             else:
                 context_window = min(self.CONTEXT_WINDOW, 2)
 
+            # Add only the necessary messages
             if context_window > 0:
                 messages.extend(self.conversation_history[-context_window:])
 
@@ -507,18 +527,37 @@ COMMON MISTAKES:
         })
 
         try:
+            # ========== OPTIMIZE OLLAMA PARAMETERS ==========
+            # BEFORE: max_tokens=512 (default)
+            # AFTER: max_tokens=256 (50% reduction for short responses)
+            ollama_options = self.get_ollama_options()
+
+            # Override max_tokens for faster responses (queries are usually simple)
+            # Short responses: 256 tokens (~1000 chars) is sufficient
+            ollama_options['num_predict'] = 256
+
             if self.ENABLE_STREAMING:
-                return self._chat_stream_groq(messages, user_message, start_time, intent)
+                # Streaming response
+                return self._chat_stream(messages, user_message, start_time, intent)
             else:
-                # Standard Groq API call
-                response = self.groq_client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=self.TEMPERATURE,
-                    max_tokens=self.MAX_TOKENS,
-                    top_p=self.TOP_P
-                )
-                assistant_message = response.choices[0].message.content
+                # Standard response with optimized context
+                if self.use_groq:
+                    # Use Groq API
+                    response = self.groq_client.chat.completions.create(
+                        model="mixtral-8x7b-32768",  # Free model on Groq
+                        messages=messages,
+                        temperature=self.TEMPERATURE,
+                        max_tokens=256
+                    )
+                    assistant_message = response.choices[0].message.content
+                else:
+                    # Use Ollama (local)
+                    response = ollama.chat(
+                        model=self.model,
+                        messages=messages,
+                        options=ollama_options
+                    )
+                    assistant_message = response['message']['content']
 
                 # Calculate response time
                 response_time_ms = int((time.time() - start_time) * 1000)
@@ -546,13 +585,16 @@ COMMON MISTAKES:
                     "conversation_id": self.conversation.conversation_id if self.conversation else None,
                     "model": self.model,
                     "intent": intent,
-                    "handled_by": "groq_api",
+                    "handled_by": "ai",
                     "response_time_ms": response_time_ms
                 }
 
         except Exception as e:
             error_msg = str(e)
-            friendly_error = f"Chatbot error: {error_msg}"
+            if "connection" in error_msg.lower():
+                friendly_error = f"Cannot connect to Ollama. Please ensure:\n1. Ollama is installed\n2. Run 'ollama serve' in terminal\n3. Model '{self.model}' is pulled: 'ollama pull {self.model}'"
+            else:
+                friendly_error = f"Chatbot error: {error_msg}"
 
             # Log error
             if self.user:
@@ -567,25 +609,36 @@ COMMON MISTAKES:
             return {
                 "success": False,
                 "error": friendly_error,
-                "response": "I'm having trouble connecting to the AI service right now. Please try again in a moment."
+                "response": "I'm having trouble connecting right now. Please check that Ollama is running and the model is available."
             }
 
-    def _chat_stream_groq(self, messages, user_message, start_time, intent='informational'):
-        """Handle streaming responses from Groq"""
+    def _chat_stream(self, messages, user_message, start_time, intent='informational'):
+        """Handle streaming responses"""
         try:
             full_response = ""
-            stream = self.groq_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.TEMPERATURE,
-                max_tokens=self.MAX_TOKENS,
-                top_p=self.TOP_P,
-                stream=True
-            )
-            
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
+            if self.use_groq:
+                # Groq streaming
+                stream = self.groq_client.chat.completions.create(
+                    model="mixtral-8x7b-32768",
+                    messages=messages,
+                    temperature=self.TEMPERATURE,
+                    max_tokens=256,
+                    stream=True
+                )
+                for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        full_response += chunk.choices[0].delta.content
+            else:
+                # Ollama streaming
+                stream = ollama.chat(
+                    model=self.model,
+                    messages=messages,
+                    options=self.get_ollama_options(),
+                    stream=True
+                )
+                for chunk in stream:
+                    if 'message' in chunk and 'content' in chunk['message']:
+                        full_response += chunk['message']['content']
 
             response_time_ms = int((time.time() - start_time) * 1000)
 
@@ -606,7 +659,7 @@ COMMON MISTAKES:
                 "conversation_id": self.conversation.conversation_id if self.conversation else None,
                 "model": self.model,
                 "intent": intent,
-                "handled_by": "groq_api_stream",
+                "handled_by": "ai_stream",
                 "response_time_ms": response_time_ms,
                 "streaming": True
             }
@@ -618,7 +671,9 @@ COMMON MISTAKES:
             }
 
     def _log_chatbot_usage(self, user_message, bot_response, intent, response_time):
-        """Log chatbot usage for analytics and monitoring"""
+        """
+        Log chatbot usage for analytics and monitoring
+        """
         if not self.user or not self.user.is_authenticated:
             return
 
@@ -636,7 +691,7 @@ COMMON MISTAKES:
             )
 
     def get_quick_suggestions(self):
-        """Get context-aware quick reply suggestions"""
+        """Get context-aware quick reply suggestions with enhanced features"""
         suggestions = []
 
         if self.user and self.user.is_authenticated:
@@ -671,44 +726,40 @@ COMMON MISTAKES:
         return suggestions
 
     @staticmethod
-    def check_groq_status():
-        """Check if Groq API is accessible"""
-        groq_api_key = config('GROQ_API_KEY', default=None)
-        
-        if not groq_api_key:
-            return {
-                "status": "error",
-                "message": "GROQ_API_KEY not configured in environment variables"
-            }
-        
-        if not GROQ_AVAILABLE:
-            return {
-                "status": "error",
-                "message": "Groq library not installed. Run: pip install groq"
-            }
-        
+    def get_available_models():
+        """Get list of available Ollama models on the system"""
         try:
-            client = GroqClient(api_key=groq_api_key)
-            # Test with a simple query
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": "Hi"}],
-                max_tokens=10
-            )
+            models = ollama.list()
+            available = []
+            for model in models.get('models', []):
+                model_name = model.get('name', '')
+                if model_name:
+                    available.append(model_name)
+            return available
+        except Exception as e:
+            return []
+
+    @staticmethod
+    def check_ollama_status():
+        """Check if Ollama service is running"""
+        try:
+            ollama.list()
             return {
                 "status": "running",
-                "message": "Groq API is running successfully",
-                "model": "llama-3.3-70b-versatile"
+                "message": "Ollama is running successfully"
             }
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Groq API error: {str(e)}"
+                "message": f"Ollama is not running: {str(e)}"
             }
 
     @staticmethod
     def clear_cache():
-        """Clear all chatbot-related cache"""
+        """
+        Clear all chatbot-related cache.
+        Should be called when gym data (plans, passes) is updated.
+        """
         cache_keys = [
             'chatbot_static_base_context',
             'chatbot_membership_plans',
@@ -719,7 +770,8 @@ COMMON MISTAKES:
         for key in cache_keys:
             cache.delete(key)
 
-        # Clear staff stats cache
+        # Clear staff stats cache (varies by date)
+        # This is a wildcard delete - in production, use cache.delete_pattern if available
         today = date.today()
         cache.delete(f'chatbot_staff_stats_{today}')
 
