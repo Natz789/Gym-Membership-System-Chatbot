@@ -211,15 +211,16 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 # ==================== Chatbot Performance Settings ====================
-# Powered by Groq API (Mixtral-8x7b-32768)
+# Powered by OpenAI API (GPT-4o-mini)
 
-# Groq Configuration (Required)
-GROQ_API_KEY = config('GROQ_API_KEY', default=None)
+# OpenAI Configuration (Required)
+OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
 
 # Chatbot Model Parameters
+CHATBOT_MODEL = 'gpt-4o-mini'  # OpenAI model (gpt-4o-mini for cost-effectiveness, gpt-4o for advanced reasoning)
 CHATBOT_TEMPERATURE = 0.7  # Creativity level (0.0-1.0)
 CHATBOT_TOP_P = 0.9  # Nucleus sampling
-CHATBOT_MAX_TOKENS = 256  # Maximum response length in tokens
+CHATBOT_MAX_TOKENS = 500  # Maximum response length in tokens (increased for detailed recommendations)
 CHATBOT_CONTEXT_WINDOW = 6  # Messages to keep in context
 CHATBOT_ENABLE_STREAMING = False  # Streaming responses disabled
 CHATBOT_ENABLE_PERSISTENCE = True  # Save conversation history
@@ -232,3 +233,7 @@ CHATBOT_CACHE_DURATION_LONG = 3600  # 1 hour
 # Query Optimization
 CHATBOT_MAX_SEARCH_RESULTS = 10  # Limit search results for performance
 CHATBOT_ANALYTICS_CACHE_ENABLED = True
+
+# Enhanced Database Context for Recommendations
+CHATBOT_ENABLE_GYM_INSIGHTS = True  # Include gym trends and analytics in context
+CHATBOT_ENABLE_PERSONALIZED_INSIGHTS = True  # Include member-specific workout recommendations

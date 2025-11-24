@@ -7,7 +7,7 @@ This guide provides comprehensive instructions to deploy the Gym Membership Syst
 - **Framework**: Django 5.2.7
 - **Database**: PostgreSQL
 - **Web Server**: Gunicorn
-- **Chatbot Engine**: Ollama (Qwen2.5-0.5B)
+- **Chatbot Engine**: OpenAI API (GPT-4o-mini)
 - **Static Files**: WhiteNoise
 - **Deployment Platform**: Render.com
 
@@ -57,10 +57,8 @@ DATABASE_URL=postgresql://gym_4iym_user:kSZlA71WuWG7R9srM0yk3hzs1GbO8Ts6@dpg-d4h
 # Allowed Hosts
 ALLOWED_HOSTS=gym-membership-chatbot.onrender.com,127.0.0.1,localhost
 
-# Ollama Configuration
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:0.5b
-OLLAMA_TIMEOUT=30
+# OpenAI API Configuration (Required for chatbot)
+OPENAI_API_KEY=your-openai-api-key-here
 
 # Redis (optional, for caching)
 REDIS_URL=redis://localhost:6379/1
@@ -76,6 +74,29 @@ Run this command locally:
 ```bash
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
+
+### Get Your OpenAI API Key
+
+1. **Create OpenAI Account**
+   - Visit [OpenAI Platform](https://platform.openai.com/)
+   - Sign up or log in to your account
+
+2. **Generate API Key**
+   - Go to [API Keys](https://platform.openai.com/api-keys)
+   - Click "Create new secret key"
+   - Give it a name (e.g., "Gym Chatbot Production")
+   - Copy the key immediately (you won't be able to see it again)
+
+3. **Add Credits** (if needed)
+   - Go to [Billing](https://platform.openai.com/account/billing)
+   - Add payment method and credits
+   - The chatbot uses GPT-4o-mini which is very cost-effective
+
+4. **Set Usage Limits** (recommended)
+   - Set monthly spending limits to control costs
+   - Monitor usage in the OpenAI dashboard
+
+**Note**: The chatbot is configured to use GPT-4o-mini by default, which offers excellent performance at low cost (~$0.15 per 1M input tokens, $0.60 per 1M output tokens). You can switch to GPT-4o in settings.py for more advanced reasoning if needed.
 
 ---
 
@@ -121,8 +142,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
    | `SECRET_KEY` | `(generate new)` |
    | `DATABASE_URL` | `postgresql://gym_4iym_user:kSZlA71WuWG7R9srM0yk3hzs1GbO8Ts6@dpg-d4hgpcruibrs73djpc7g-a.singapore-postgres.render.com/gym_4iym` |
    | `ALLOWED_HOSTS` | `gym-membership-chatbot.onrender.com,127.0.0.1,localhost` |
-   | `OLLAMA_HOST` | `http://localhost:11434` |
-   | `OLLAMA_MODEL` | `qwen2.5:0.5b` |
+   | `OPENAI_API_KEY` | `(your OpenAI API key)` |
    | `CSRF_TRUSTED_ORIGINS` | `https://gym-membership-chatbot.onrender.com` |
 
 3. **Create Web Service**
@@ -237,7 +257,7 @@ Lists all Python package dependencies. Key packages:
 - `python-decouple` - Environment variable management
 - `whitenoise` - Static file serving
 - `django-redis` - Caching backend
-- `ollama` - Chatbot engine
+- `openai` - OpenAI API client for chatbot
 - `qrcode` - QR code generation
 - `Pillow` - Image processing
 
@@ -316,12 +336,13 @@ echo $DATABASE_URL
 ALLOWED_HOSTS=your-service-name.onrender.com,127.0.0.1,localhost
 ```
 
-### Issue 5: Ollama Not Running
+### Issue 5: OpenAI API Not Working
 
 **Solution**:
-- Ollama requires CPU, not available on free tier
-- Run Ollama separately or use OpenAI API instead
-- Update `OLLAMA_HOST` to your Ollama server
+- Verify your OpenAI API key is correct
+- Check if the API key has sufficient credits
+- Ensure `OPENAI_API_KEY` environment variable is set in Render
+- Check OpenAI API status at https://status.openai.com
 
 ### Issue 6: Media Files Persist Problem
 
@@ -549,5 +570,42 @@ python manage.py check --deploy
 
 ---
 
-**Last Updated**: 2025-11-23
-**Configuration Version**: 1.0
+## Chatbot Features
+
+The OpenAI-powered chatbot includes:
+
+### For Members
+- **Personalized Recommendations**: Based on workout history and frequency
+- **Membership Status**: Check active memberships, expiration dates, and days remaining
+- **Payment Information**: View payment history and pending payments
+- **Workout Insights**: Get tailored advice based on your visit patterns
+- **Gym Information**: Ask about facilities, hours, policies, and membership plans
+
+### For Staff & Admins
+- **Analytics Queries**:
+  - Revenue summaries (today, this week, this month)
+  - Membership growth and trends
+  - Attendance patterns and peak hours
+  - Member retention and churn analysis
+  - Payment collection status
+- **Member Operations**:
+  - Look up member information
+  - Find members expiring soon
+  - Check current gym occupancy
+- **Reports**: Generate comprehensive reports with natural language queries
+
+### Enhanced Database Context
+The chatbot has full access to:
+- Active membership counts and trends
+- Today's attendance and average visit duration
+- Popular membership plans
+- Members expiring soon (for proactive retention)
+- Personalized member workout patterns
+- Historical visit frequency and recommendations
+
+All responses are context-aware and backed by real-time database insights.
+
+---
+
+**Last Updated**: 2025-11-24
+**Configuration Version**: 2.0 (OpenAI Migration)
