@@ -211,17 +211,15 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 # ==================== Chatbot Performance Settings ====================
-# Permanently configured with Qwen2.5-0.5B model (ultra-fast, 4GB RAM)
+# Powered by Groq API (Mixtral-8x7b-32768)
 
-# Ollama Configuration
-OLLAMA_HOST = config('OLLAMA_HOST', default='http://localhost:11434')
-OLLAMA_TIMEOUT = config('OLLAMA_TIMEOUT', default=30, cast=int)  # seconds
-OLLAMA_MODEL = config('OLLAMA_MODEL', default='qwen2.5:0.5b')  # Permanently set to Qwen2.5-0.5B
+# Groq Configuration (Required)
+GROQ_API_KEY = config('GROQ_API_KEY', default=None)
 
 # Chatbot Model Parameters
 CHATBOT_TEMPERATURE = 0.7  # Creativity level (0.0-1.0)
 CHATBOT_TOP_P = 0.9  # Nucleus sampling
-CHATBOT_MAX_TOKENS = 512  # Maximum response length in tokens
+CHATBOT_MAX_TOKENS = 256  # Maximum response length in tokens
 CHATBOT_CONTEXT_WINDOW = 6  # Messages to keep in context
 CHATBOT_ENABLE_STREAMING = False  # Streaming responses disabled
 CHATBOT_ENABLE_PERSISTENCE = True  # Save conversation history
