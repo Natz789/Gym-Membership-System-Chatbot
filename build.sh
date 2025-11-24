@@ -3,6 +3,10 @@
 
 set -o errexit
 
+# Clean pip cache to force fresh install
+echo "Cleaning pip cache..."
+pip cache purge
+
 # Install Python dependencies
 echo "Installing Python dependencies..."
 pip install -r requirements.txt

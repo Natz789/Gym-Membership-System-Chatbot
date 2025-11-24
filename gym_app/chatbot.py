@@ -66,11 +66,15 @@ class GymChatbot:
         # Try to initialize Groq first (production)
         if self.groq_api_key and GROQ_AVAILABLE:
             try:
+                # Initialize Groq client with only API key (no proxies or timeout)
                 self.groq_client = GroqClient(api_key=self.groq_api_key)
                 self.use_groq = True
+                print(f"Groq client initialized successfully with API key")
             except Exception as e:
                 print(f"Failed to initialize Groq: {str(e)}")
-                pass
+                # Don't set use_groq to True if initialization fails
+                self.use_groq = False
+                self.groq_client = None
 
         # If no Groq, try Ollama (local development only)
         if not self.use_groq and not self.groq_api_key:
