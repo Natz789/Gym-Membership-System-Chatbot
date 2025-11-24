@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('gym_app', '0010_add_performance_indexes'),
+        ('gym_app', '0011_add_chatbot_optimization_indexes'),
     ]
 
     operations = [
