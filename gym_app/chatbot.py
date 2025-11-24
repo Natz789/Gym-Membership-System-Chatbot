@@ -20,6 +20,7 @@ import uuid
 import time
 from django.conf import settings
 from django.core.cache import cache
+from decouple import config
 from .models import (
     User, MembershipPlan, FlexibleAccess, UserMembership, Payment, Attendance,
     Conversation, ConversationMessage, AuditLog
@@ -28,6 +29,12 @@ from .chatbot_tools import ChatbotTools
 from .chatbot_analytics import AnalyticsEngine
 from datetime import date, timedelta
 import json
+
+try:
+    from groq import Groq as GroqClient
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
 
 
 class GymChatbot:
@@ -50,6 +57,17 @@ class GymChatbot:
         self.model = self.MODEL
         self.conversation = None
         self.conversation_history = []
+
+        # Initialize LLM client (Groq for production, Ollama for local)
+        self.use_groq = False
+        self.groq_client = None
+        groq_api_key = config('GROQ_API_KEY', default=None)
+        if GROQ_AVAILABLE and groq_api_key:
+            try:
+                self.groq_client = GroqClient(api_key=groq_api_key)
+                self.use_groq = True
+            except Exception:
+                pass
 
         # Initialize tools for advanced features
         self.tools = ChatbotTools(user)
@@ -523,13 +541,23 @@ COMMON MISTAKES:
                 return self._chat_stream(messages, user_message, start_time, intent)
             else:
                 # Standard response with optimized context
-                response = ollama.chat(
-                    model=self.model,
-                    messages=messages,
-                    options=ollama_options
-                )
-
-                assistant_message = response['message']['content']
+                if self.use_groq:
+                    # Use Groq API
+                    response = self.groq_client.chat.completions.create(
+                        model="mixtral-8x7b-32768",  # Free model on Groq
+                        messages=messages,
+                        temperature=self.TEMPERATURE,
+                        max_tokens=256
+                    )
+                    assistant_message = response.choices[0].message.content
+                else:
+                    # Use Ollama (local)
+                    response = ollama.chat(
+                        model=self.model,
+                        messages=messages,
+                        options=ollama_options
+                    )
+                    assistant_message = response['message']['content']
 
                 # Calculate response time
                 response_time_ms = int((time.time() - start_time) * 1000)
@@ -588,16 +616,29 @@ COMMON MISTAKES:
         """Handle streaming responses"""
         try:
             full_response = ""
-            stream = ollama.chat(
-                model=self.model,
-                messages=messages,
-                options=self.get_ollama_options(),
-                stream=True
-            )
-
-            for chunk in stream:
-                if 'message' in chunk and 'content' in chunk['message']:
-                    full_response += chunk['message']['content']
+            if self.use_groq:
+                # Groq streaming
+                stream = self.groq_client.chat.completions.create(
+                    model="mixtral-8x7b-32768",
+                    messages=messages,
+                    temperature=self.TEMPERATURE,
+                    max_tokens=256,
+                    stream=True
+                )
+                for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        full_response += chunk.choices[0].delta.content
+            else:
+                # Ollama streaming
+                stream = ollama.chat(
+                    model=self.model,
+                    messages=messages,
+                    options=self.get_ollama_options(),
+                    stream=True
+                )
+                for chunk in stream:
+                    if 'message' in chunk and 'content' in chunk['message']:
+                        full_response += chunk['message']['content']
 
             response_time_ms = int((time.time() - start_time) * 1000)
 

@@ -23,4 +23,8 @@ python manage.py migrate || true
 echo "Creating cache table..."
 python manage.py createcachetable || true
 
+# Create superuser from environment variables (if set)
+echo "Creating superuser from environment variables..."
+python manage.py create_superuser || true
+
 echo "Build completed successfully!"
