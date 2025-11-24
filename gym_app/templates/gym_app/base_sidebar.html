@@ -683,7 +683,7 @@
         } catch (error) {
             widgetTyping.classList.remove('active');
             widgetSendButton.disabled = false;
-            addWidgetMessage('Connection error. Please make sure Ollama is running.', 'bot', true);
+            addWidgetMessage('Connection error. Please try again or contact support.', 'bot', true);
             console.error('Widget chat error:', error);
         }
     });

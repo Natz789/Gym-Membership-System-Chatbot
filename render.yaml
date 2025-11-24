@@ -28,11 +28,8 @@ services:
       - key: ALLOWED_HOSTS
         value: "gym-membership-chatbot.onrender.com,*.onrender.com,127.0.0.1,localhost"
 
-      - key: OLLAMA_HOST
-        value: "http://localhost:11434"
-
-      - key: OLLAMA_MODEL
-        value: "qwen2.5:0.5b"
+      - key: GROQ_API_KEY
+        sync: false
 
       - key: REDIS_URL
         sync: false

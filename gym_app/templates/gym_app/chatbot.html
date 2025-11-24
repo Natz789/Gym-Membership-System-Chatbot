@@ -553,7 +553,7 @@ chatForm.addEventListener('submit', async (e) => {
     } catch (error) {
         typingIndicator.classList.remove('active');
         sendButton.disabled = false;
-        addMessage('Sorry, I encountered an error. Please make sure Ollama is running: ollama serve', 'bot', true);
+        addMessage('Sorry, I encountered an error. Please try again later or contact support.', 'bot', true);
         console.error('Chat error:', error);
     }
 });
