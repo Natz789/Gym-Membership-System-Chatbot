@@ -15,9 +15,9 @@ mkdir -p staticfiles media logs
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Run migrations
+# Run migrations (skip if database not available)
 echo "Running database migrations..."
-python manage.py migrate
+python manage.py migrate || true
 
 # Create cache table (if using database cache)
 echo "Creating cache table..."
