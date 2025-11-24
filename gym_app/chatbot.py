@@ -1,14 +1,15 @@
 """
 Enhanced AI Chatbot Engine for Gym Membership System
-Powered by Groq API with advanced capabilities
+Powered by OpenAI API with advanced capabilities
 - Intent detection and intelligent routing
-- Advanced analytics and reporting
+- Advanced analytics and reporting with full database context
 - Member lookup and management
 - Staff/admin operations
 - Permission-based access control
 - Audit logging for all operations
+- Gym-specific recommendations using comprehensive database insights
 
-Uses Groq API (Mixtral-8x7b-32768) for fast, reliable responses
+Uses OpenAI API (GPT-4o) for intelligent, context-aware responses
 """
 
 import uuid
@@ -24,17 +25,17 @@ from .chatbot_tools import ChatbotTools
 from .chatbot_analytics import AnalyticsEngine
 from datetime import date, timedelta
 import json
-from groq import Groq as GroqClient
+from openai import OpenAI
 
 
 class GymChatbot:
-    """AI-powered chatbot for gym assistance - Powered by Groq API"""
+    """AI-powered chatbot for gym assistance - Powered by OpenAI API"""
 
-    # Groq API Configuration
-    MODEL = 'mixtral-8x7b-32768'  # Fast, high-quality model from Groq
+    # OpenAI API Configuration
+    MODEL = 'gpt-4o-mini'  # Fast, cost-effective OpenAI model
     TEMPERATURE = 0.7
     TOP_P = 0.9
-    MAX_TOKENS = 256  # Optimized for gym-related responses
+    MAX_TOKENS = 500  # Increased for detailed recommendations
     CONTEXT_WINDOW = 6
     ENABLE_STREAMING = False
     ENABLE_PERSISTENCE = True
@@ -47,21 +48,21 @@ class GymChatbot:
         self.conversation = None
         self.conversation_history = []
 
-        # Initialize Groq client (required)
-        self.groq_api_key = config('GROQ_API_KEY', default=None)
-        self.groq_client = None
+        # Initialize OpenAI client (required)
+        self.openai_api_key = config('OPENAI_API_KEY', default=None)
+        self.openai_client = None
 
-        if not self.groq_api_key:
+        if not self.openai_api_key:
             raise ValueError(
-                "GROQ_API_KEY environment variable is required. "
-                "Please set your Groq API key to use the chatbot."
+                "OPENAI_API_KEY environment variable is required. "
+                "Please set your OpenAI API key to use the chatbot."
             )
 
         try:
-            # Initialize Groq client with API key
-            self.groq_client = GroqClient(api_key=self.groq_api_key)
+            # Initialize OpenAI client with API key
+            self.openai_client = OpenAI(api_key=self.openai_api_key)
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
+            raise RuntimeError(f"Failed to initialize OpenAI client: {str(e)}")
 
         # Initialize tools for advanced features
         self.tools = ChatbotTools(user)
@@ -245,7 +246,8 @@ If you don't know something specific, politely direct the user to contact the gy
 
     def get_system_context(self):
         """
-        Generate system context based on user role and gym data.
+        Generate comprehensive system context based on user role and gym data.
+        Enhanced with full database insights for better recommendations.
         Optimized with caching for faster performance.
         """
         # Start with cached static base context
@@ -254,6 +256,9 @@ If you don't know something specific, politely direct the user to contact the gy
         # Add cached membership plans and walk-in passes
         context += self._get_cached_membership_plans()
         context += self._get_cached_walkin_passes()
+
+        # Add comprehensive gym insights for better recommendations
+        context += self._get_gym_insights()
 
         # Add user-specific context (not cached as it's frequently changing)
         if self.user and self.user.is_authenticated:
@@ -275,8 +280,12 @@ If you don't know something specific, politely direct the user to contact the gy
                     # Get kiosk PIN
                     if self.user.kiosk_pin:
                         context += f"Kiosk PIN: {self.user.kiosk_pin}\n"
+
+                    # Add personalized workout recommendations based on visit history
+                    context += self._get_member_personalized_insights(self.user)
                 else:
                     context += "No active membership\n"
+                    context += "💡 Recommend subscribing to a membership plan to get started.\n"
 
                 # Get recent attendance count (optimized - only count, no full data)
                 recent_count = Attendance.objects.filter(
@@ -312,6 +321,133 @@ If you don't know something specific, politely direct the user to contact the gy
                     context += stats_text
 
         return context
+
+    @staticmethod
+    def _get_gym_insights():
+        """
+        Get comprehensive gym insights for better AI recommendations.
+        Includes current gym trends, popular times, membership stats.
+        Cached for 5 minutes to balance freshness and performance.
+        """
+        cache_key = 'chatbot_gym_insights'
+        cached_insights = cache.get(cache_key)
+
+        if cached_insights:
+            return cached_insights
+
+        insights = "\n\nGYM INSIGHTS & TRENDS:\n"
+
+        # Get active membership count
+        active_count = UserMembership.objects.filter(
+            status='active',
+            end_date__gte=date.today()
+        ).count()
+        insights += f"- Active Members: {active_count}\n"
+
+        # Get today's attendance
+        today = date.today()
+        today_visits = Attendance.objects.filter(
+            check_in__date=today
+        ).count()
+        insights += f"- Today's Visits: {today_visits}\n"
+
+        # Get peak hours (last 7 days)
+        seven_days_ago = today - timedelta(days=7)
+        recent_visits = Attendance.objects.filter(
+            check_in__date__gte=seven_days_ago
+        )
+
+        if recent_visits.exists():
+            # Calculate average session duration
+            completed = recent_visits.filter(check_out__isnull=False)
+            if completed.exists():
+                from django.db.models import Avg
+                avg_duration = completed.aggregate(Avg('duration_minutes'))['duration_minutes__avg']
+                if avg_duration:
+                    insights += f"- Average Workout Duration: {int(avg_duration)} minutes\n"
+
+        # Get most popular membership plan
+        from django.db.models import Count
+        popular_plan = UserMembership.objects.filter(
+            status='active',
+            end_date__gte=today
+        ).values('plan__name').annotate(count=Count('id')).order_by('-count').first()
+
+        if popular_plan:
+            insights += f"- Most Popular Plan: {popular_plan['plan__name']} ({popular_plan['count']} active members)\n"
+
+        # Get members expiring soon (next 7 days) - for retention recommendations
+        expiring_soon = UserMembership.objects.filter(
+            status='active',
+            end_date__gte=today,
+            end_date__lte=today + timedelta(days=7)
+        ).count()
+
+        if expiring_soon > 0:
+            insights += f"- Members Expiring Soon (7 days): {expiring_soon}\n"
+
+        insights += "\n💡 Use these insights to provide personalized recommendations and answer analytics queries.\n"
+
+        # Cache for 5 minutes
+        cache.set(cache_key, insights, 300)
+        return insights
+
+    @staticmethod
+    def _get_member_personalized_insights(user):
+        """
+        Get personalized insights for a specific member based on their activity.
+        Helps provide tailored workout and schedule recommendations.
+        """
+        insights = "\n\nPERSONALIZED INSIGHTS:\n"
+
+        # Get member's visit frequency (last 30 days)
+        thirty_days_ago = date.today() - timedelta(days=30)
+        recent_visits = Attendance.objects.filter(
+            user=user,
+            check_in__date__gte=thirty_days_ago
+        )
+
+        visit_count = recent_visits.count()
+        if visit_count > 0:
+            insights += f"- Visits (Last 30 days): {visit_count}\n"
+
+            # Calculate average visits per week
+            avg_per_week = (visit_count / 30) * 7
+            insights += f"- Average: {avg_per_week:.1f} visits/week\n"
+
+            # Get average workout duration
+            completed = recent_visits.filter(check_out__isnull=False)
+            if completed.exists():
+                from django.db.models import Avg
+                avg_duration = completed.aggregate(Avg('duration_minutes'))['duration_minutes__avg']
+                if avg_duration:
+                    insights += f"- Average Duration: {int(avg_duration)} minutes/session\n"
+
+            # Get most common workout days
+            # This helps recommend optimal workout schedules
+            from django.db.models import Count
+            day_counts = recent_visits.extra(
+                select={'day_of_week': 'CAST(strftime("%%w", check_in) AS INTEGER)'}
+            ).values('day_of_week').annotate(count=Count('id')).order_by('-count')[:3]
+
+            if day_counts:
+                days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                common_days = [days[d['day_of_week']] for d in day_counts if 'day_of_week' in d]
+                if common_days:
+                    insights += f"- Common Workout Days: {', '.join(common_days)}\n"
+
+            # Provide recommendation based on frequency
+            if avg_per_week < 2:
+                insights += "💡 Recommendation: Try to increase frequency to 3-4 times/week for better results.\n"
+            elif avg_per_week >= 4:
+                insights += "🔥 Great consistency! Keep up the excellent work!\n"
+            else:
+                insights += "✅ Good workout frequency. Consider adding one more session for optimal results.\n"
+        else:
+            insights += "- No recent visits in the last 30 days\n"
+            insights += "💡 Recommendation: Start with 3 workouts per week for building a routine.\n"
+
+        return insights
 
     @staticmethod
     def get_fitness_knowledge():
@@ -517,12 +653,13 @@ COMMON MISTAKES:
                 # Streaming response
                 return self._chat_stream(messages, user_message, start_time, intent)
             else:
-                # Use Groq API for response
-                response = self.groq_client.chat.completions.create(
+                # Use OpenAI API for response
+                response = self.openai_client.chat.completions.create(
                     model=self.MODEL,
                     messages=messages,
                     temperature=self.TEMPERATURE,
-                    max_tokens=self.MAX_TOKENS
+                    max_tokens=self.MAX_TOKENS,
+                    top_p=self.TOP_P
                 )
                 assistant_message = response.choices[0].message.content
 
@@ -577,15 +714,16 @@ COMMON MISTAKES:
             }
 
     def _chat_stream(self, messages, user_message, start_time, intent='informational'):
-        """Handle streaming responses via Groq API"""
+        """Handle streaming responses via OpenAI API"""
         try:
             full_response = ""
-            # Groq streaming
-            stream = self.groq_client.chat.completions.create(
+            # OpenAI streaming
+            stream = self.openai_client.chat.completions.create(
                 model=self.MODEL,
                 messages=messages,
                 temperature=self.TEMPERATURE,
                 max_tokens=self.MAX_TOKENS,
+                top_p=self.TOP_P,
                 stream=True
             )
             for chunk in stream:
