@@ -58,16 +58,24 @@ class GymChatbot:
         self.conversation = None
         self.conversation_history = []
 
-        # Initialize LLM client (Groq for production, Ollama for local)
+        # Initialize LLM client (Groq for cloud, Ollama for local dev)
         self.use_groq = False
         self.groq_client = None
-        groq_api_key = config('GROQ_API_KEY', default=None)
-        if GROQ_AVAILABLE and groq_api_key:
+        self.groq_api_key = config('GROQ_API_KEY', default=None)
+
+        # Try to initialize Groq first (production)
+        if self.groq_api_key and GROQ_AVAILABLE:
             try:
-                self.groq_client = GroqClient(api_key=groq_api_key)
+                self.groq_client = GroqClient(api_key=self.groq_api_key)
                 self.use_groq = True
-            except Exception:
+            except Exception as e:
+                print(f"Failed to initialize Groq: {str(e)}")
                 pass
+
+        # If no Groq, try Ollama (local development only)
+        if not self.use_groq and not self.groq_api_key:
+            # No Groq key, will fallback to Ollama
+            pass
 
         # Initialize tools for advanced features
         self.tools = ChatbotTools(user)
@@ -387,6 +395,7 @@ COMMON MISTAKES:
         """
         start_time = time.time()
 
+
         # OPTIMIZATION #1: Check FAQ database FIRST - instant response (<10ms)
         # This should be done BEFORE any other processing
         from .chatbot_tools import FAQFastPath
@@ -591,10 +600,7 @@ COMMON MISTAKES:
 
         except Exception as e:
             error_msg = str(e)
-            if "connection" in error_msg.lower():
-                friendly_error = f"Cannot connect to Ollama. Please ensure:\n1. Ollama is installed\n2. Run 'ollama serve' in terminal\n3. Model '{self.model}' is pulled: 'ollama pull {self.model}'"
-            else:
-                friendly_error = f"Chatbot error: {error_msg}"
+            friendly_error = f"Chatbot service is temporarily unavailable. Please try again later."
 
             # Log error
             if self.user:
@@ -609,7 +615,7 @@ COMMON MISTAKES:
             return {
                 "success": False,
                 "error": friendly_error,
-                "response": "I'm having trouble connecting right now. Please check that Ollama is running and the model is available."
+                "response": "Chatbot service is temporarily unavailable. Please try again later."
             }
 
     def _chat_stream(self, messages, user_message, start_time, intent='informational'):
