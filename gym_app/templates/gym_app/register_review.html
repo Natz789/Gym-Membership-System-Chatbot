@@ -310,6 +310,17 @@
         <!-- Hidden input to re-upload image if needed -->
         <input type="file" name="profile_image" id="profileImageHidden" style="display:none;">
 
+        <!-- Confirmation Checkbox -->
+        <div style="background: #f0f4ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid var(--secondary-blue);">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                <input type="checkbox" name="confirm_information" id="confirm_information" required style="margin-top: 0.3rem; width: 18px; height: 18px; cursor: pointer;">
+                <span style="color: var(--dark-gray); font-weight: 500;">
+                    <i class="fas fa-check-circle" style="color: var(--secondary-blue); margin-right: 0.5rem;"></i>
+                    I confirm that all the information provided is correct and accurate
+                </span>
+            </label>
+        </div>
+
         <div class="btn-group">
             <a href="{% url 'register_step3' %}" class="btn-secondary">
                 <i class="fas fa-edit"></i> Edit

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
+from django.core.paginator import Paginator
 from datetime import date, timedelta
 from decimal import Decimal
 from django.http import JsonResponse
@@ -489,29 +490,43 @@ def staff_dashboard(request):
 def member_dashboard(request):
     """Member dashboard - view own membership status"""
     user = request.user
-    
+
     # Get current membership
     current_membership = UserMembership.objects.filter(
         user=user,
         status='active'
     ).select_related('plan').first()
-    
-    # Payment history
-    payment_history = Payment.objects.filter(
+
+    # Payment history with pagination
+    payment_list = Payment.objects.filter(
         user=user
-    ).select_related('membership__plan').order_by('-payment_date')[:10]
-    
-    # All memberships (history)
-    all_memberships = UserMembership.objects.filter(
+    ).select_related('membership__plan').order_by('-payment_date')
+
+    payment_paginator = Paginator(payment_list, 5)  # 5 items per page
+    payment_page = request.GET.get('payment_page', 1)
+    try:
+        payment_history = payment_paginator.page(payment_page)
+    except:
+        payment_history = payment_paginator.page(1)
+
+    # All memberships (history) with pagination
+    all_memberships_list = UserMembership.objects.filter(
         user=user
     ).select_related('plan').order_by('-start_date')
-    
+
+    membership_paginator = Paginator(all_memberships_list, 5)  # 5 items per page
+    membership_page = request.GET.get('membership_page', 1)
+    try:
+        all_memberships = membership_paginator.page(membership_page)
+    except:
+        all_memberships = membership_paginator.page(1)
+
     context = {
         'current_membership': current_membership,
         'payment_history': payment_history,
         'all_memberships': all_memberships,
     }
-    
+
     return render(request, 'gym_app/dashboard_member.html', context)
 
 
@@ -551,17 +566,20 @@ def subscribe_plan(request, plan_id):
     if request.user.role != 'member':
         messages.error(request, 'Only members can subscribe to plans.')
         return redirect('membership_plans')
-    
+
     plan = get_object_or_404(MembershipPlan, id=plan_id, is_active=True)
-    
-    # Check if user already has active membership
-    active_membership = UserMembership.objects.filter(
+
+    # Check if user already has active or pending membership
+    existing_membership = UserMembership.objects.filter(
         user=request.user,
-        status='active'
+        status__in=['active', 'pending']
     ).first()
-    
-    if active_membership:
-        messages.warning(request, 'You already have an active membership.')
+
+    if existing_membership:
+        if existing_membership.status == 'active':
+            messages.warning(request, 'You already have an active membership.')
+        else:
+            messages.warning(request, 'You already have a pending membership awaiting staff approval. Please wait for confirmation or contact support.')
         return redirect('dashboard')
     
     if request.method == 'POST':

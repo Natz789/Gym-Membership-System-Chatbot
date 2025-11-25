@@ -20,35 +20,56 @@
     <div class="membership-header">
         <div>
             <h2 style="color: var(--primary-blue); margin: 0;">
-                <i class="fas fa-key"></i> Your Kiosk PIN
+                <i class="fas fa-key"></i> Your Kiosk Access
             </h2>
-            <p style="color: var(--gray); margin: 0.5rem 0 0 0;">Use this PIN at the attendance kiosk</p>
+            <p style="color: var(--gray); margin: 0.5rem 0 0 0;">Use your PIN at the attendance kiosk</p>
         </div>
     </div>
 
     <div style="text-align: center; padding: 2rem;">
-        <div style="background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%); 
-                    display: inline-block; 
-                    padding: 2rem 4rem; 
-                    border-radius: 20px;
+        <div style="background: linear-gradient(135deg, var(--gold) 0%, var(--dark-gold) 100%);
+                    display: inline-block;
+                    padding: 1.5rem 1.5rem;
+                    border-radius: 15px;
                     margin-bottom: 1rem;">
-            <div style="font-size: 4rem; 
-                        font-weight: 700; 
-                        letter-spacing: 1rem; 
-                        color: var(--primary-blue);
-                        font-family: 'Courier New', monospace;">
-                {{ user.kiosk_pin }}
+            <div id="kiosk-qr" style="background: white; padding: 1rem; border-radius: 10px;">
+                <!-- QR code will be generated here -->
+                <p style="color: var(--gray); font-size: 0.9rem;"><i class="fas fa-qrcode"></i> Membership QR Code</p>
             </div>
         </div>
-        <p style="color: var(--gray); margin-top: 1rem;">
-            <i class="fas fa-info-circle"></i> 
-            Keep this PIN secure. Use it to check in/out at the gym kiosk.
+        <div style="background: #f0f4ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid var(--secondary-blue);">
+            <p style="color: var(--dark-gray); margin: 0; font-weight: 500;">
+                <i class="fas fa-lock"></i> PIN is encrypted for your security
+            </p>
+        </div>
+        <p style="color: var(--gray); margin-top: 1rem; font-size: 0.9rem;">
+            <i class="fas fa-info-circle"></i>
+            Use the QR code or your PIN to check in/out at the gym kiosk.
         </p>
         <a href="{% url 'kiosk_login' %}" target="_blank" class="btn btn-gold" style="margin-top: 1rem;">
             <i class="fas fa-fingerprint"></i> Open Kiosk
         </a>
     </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.5.0/qrcode.min.js"></script>
+<script>
+    // Generate QR code for membership reference
+    const membershipData = {
+        user_id: {{ user.id }},
+        username: '{{ user.username }}',
+        timestamp: new Date().getTime()
+    };
+
+    new QRCode(document.getElementById("kiosk-qr"), {
+        text: JSON.stringify(membershipData),
+        width: 200,
+        height: 200,
+        colorDark: "#0a0a0a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+</script>
 {% endif %}
 
 
@@ -89,15 +110,11 @@
         </div>
     </div>
 
-    <!-- Cancel Membership Button -->
-    <div style="padding: 1.5rem; border-top: 1px solid #dee2e6; text-align: center; background: #f8f9fa;">
-        <p style="color: var(--gray); margin-bottom: 1rem; font-size: 0.95rem;">
-            <i class="fas fa-info-circle"></i> Need to cancel your membership?
+    <!-- Membership Info Note - View Only -->
+    <div style="padding: 1.5rem; border-top: 1px solid #dee2e6; background: #f8f9fa;">
+        <p style="color: var(--gray); margin: 0; font-size: 0.95rem; text-align: center;">
+            <i class="fas fa-info-circle"></i> This dashboard is view-only. Contact support to manage your membership.
         </p>
-        <a href="{% url 'cancel_membership_confirm' current_membership.id %}"
-           class="btn-cancel-membership">
-            <i class="fas fa-times-circle"></i> Cancel Membership
-        </a>
     </div>
 </div>
 {% else %}
@@ -117,7 +134,7 @@
         <i class="fas fa-history"></i>
         Payment History
     </h2>
-    {% if payment_history %}
+    {% if payment_history.object_list %}
     <table>
         <thead>
             <tr>
@@ -140,6 +157,33 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Pagination -->
+    {% if payment_history.has_other_pages %}
+    <div style="padding: 1rem; text-align: center; border-top: 1px solid #dee2e6;">
+        <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+            {% if payment_history.has_previous %}
+                <a href="?payment_page=1" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-step-backward"></i> First
+                </a>
+                <a href="?payment_page={{ payment_history.previous_page_number }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+            {% endif %}
+            <span style="color: var(--gray); font-size: 0.9rem;">
+                Page {{ payment_history.number }} of {{ payment_history.paginator.num_pages }}
+            </span>
+            {% if payment_history.has_next %}
+                <a href="?payment_page={{ payment_history.next_page_number }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="?payment_page={{ payment_history.paginator.num_pages }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    Last <i class="fas fa-step-forward"></i>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
     {% else %}
     <div class="empty-state">
         <i class="fas fa-receipt"></i>
@@ -154,7 +198,7 @@
         <i class="fas fa-list"></i>
         All Memberships
     </h2>
-    {% if all_memberships %}
+    {% if all_memberships.object_list %}
     <table>
         <thead>
             <tr>
@@ -181,6 +225,33 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Pagination -->
+    {% if all_memberships.has_other_pages %}
+    <div style="padding: 1rem; text-align: center; border-top: 1px solid #dee2e6;">
+        <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+            {% if all_memberships.has_previous %}
+                <a href="?membership_page=1" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-step-backward"></i> First
+                </a>
+                <a href="?membership_page={{ all_memberships.previous_page_number }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+            {% endif %}
+            <span style="color: var(--gray); font-size: 0.9rem;">
+                Page {{ all_memberships.number }} of {{ all_memberships.paginator.num_pages }}
+            </span>
+            {% if all_memberships.has_next %}
+                <a href="?membership_page={{ all_memberships.next_page_number }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="?membership_page={{ all_memberships.paginator.num_pages }}" class="btn btn-sm" style="padding: 0.5rem 0.75rem; background: var(--secondary-blue); color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                    Last <i class="fas fa-step-forward"></i>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
     {% else %}
     <div class="empty-state">
         <i class="fas fa-inbox"></i>
