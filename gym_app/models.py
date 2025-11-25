@@ -211,8 +211,8 @@ class UserMembership(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='memberships')
     plan = models.ForeignKey(MembershipPlan, on_delete=models.PROTECT, related_name='subscriptions')
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateField(null=True, blank=True, help_text="Set when membership is approved")
+    end_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     # Approval tracking - start date is based on approval, not purchase
@@ -243,7 +243,7 @@ class UserMembership(models.Model):
         db_table = 'user_memberships'
         verbose_name = 'User Membership'
         verbose_name_plural = 'User Memberships'
-        ordering = ['-start_date']
+        ordering = ['-created_at']
     
     def save(self, *args, **kwargs):
         """Auto-calculate end_date based on plan duration and approval"""

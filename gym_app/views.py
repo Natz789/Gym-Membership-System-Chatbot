@@ -588,12 +588,11 @@ def subscribe_plan(request, plan_id):
         payment_method = request.POST.get('payment_method')
         notes = request.POST.get('notes', '')
 
-        # Create membership with pending status
+        # Create membership with pending status (start_date will be set on approval)
         membership = UserMembership.objects.create(
             user=request.user,
             plan=plan,
-            start_date=date.today(),
-            status='pending'  # Changed to pending
+            status='pending'
         )
 
         # Create payment record with pending status (reference_no auto-generated)
