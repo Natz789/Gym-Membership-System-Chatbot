@@ -7,7 +7,7 @@ This guide provides comprehensive instructions to deploy the Gym Membership Syst
 - **Framework**: Django 5.2.7
 - **Database**: PostgreSQL
 - **Web Server**: Gunicorn
-- **Chatbot Engine**: OpenAI API (GPT-4o-mini)
+- **Chatbot Engine**: Groq API (FREE - llama-3.3-70b-versatile)
 - **Static Files**: WhiteNoise
 - **Deployment Platform**: Render.com
 
@@ -75,28 +75,32 @@ Run this command locally:
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-### Get Your OpenAI API Key
+### Get Your Groq API Key (100% FREE)
 
-1. **Create OpenAI Account**
-   - Visit [OpenAI Platform](https://platform.openai.com/)
-   - Sign up or log in to your account
+1. **Create Groq Account**
+   - Visit [Groq Console](https://console.groq.com/)
+   - Sign up with your email or Google account (FREE)
 
 2. **Generate API Key**
-   - Go to [API Keys](https://platform.openai.com/api-keys)
-   - Click "Create new secret key"
+   - Once logged in, click on "API Keys" in the left sidebar
+   - Click "Create API Key"
    - Give it a name (e.g., "Gym Chatbot Production")
-   - Copy the key immediately (you won't be able to see it again)
+   - Copy the key immediately (starts with `gsk_...`)
+   - ⚠️ You won't be able to see it again!
 
-3. **Add Credits** (if needed)
-   - Go to [Billing](https://platform.openai.com/account/billing)
-   - Add payment method and credits
-   - The chatbot uses GPT-4o-mini which is very cost-effective
+3. **Free Tier Limits** (Very Generous)
+   - ✅ 30 requests per minute
+   - ✅ 14,400 requests per day
+   - ✅ No credit card required
+   - ✅ No billing setup needed
+   - ✅ Completely FREE forever
 
-4. **Set Usage Limits** (recommended)
-   - Set monthly spending limits to control costs
-   - Monitor usage in the OpenAI dashboard
+4. **Monitor Usage** (Optional)
+   - Check usage at https://console.groq.com/
+   - View request counts and performance
+   - Upgrade to higher limits if needed (still very affordable)
 
-**Note**: The chatbot is configured to use GPT-4o-mini by default, which offers excellent performance at low cost (~$0.15 per 1M input tokens, $0.60 per 1M output tokens). You can switch to GPT-4o in settings.py for more advanced reasoning if needed.
+**Note**: The chatbot is configured to use Groq's `llama-3.3-70b-versatile` model by default, which offers excellent performance and is 100% FREE. This is faster than OpenAI and requires no billing!
 
 ---
 
@@ -142,7 +146,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
    | `SECRET_KEY` | `(generate new)` |
    | `DATABASE_URL` | `postgresql://gym_4iym_user:kSZlA71WuWG7R9srM0yk3hzs1GbO8Ts6@dpg-d4hgpcruibrs73djpc7g-a.singapore-postgres.render.com/gym_4iym` |
    | `ALLOWED_HOSTS` | `gym-membership-chatbot.onrender.com,127.0.0.1,localhost` |
-   | `OPENAI_API_KEY` | `(your OpenAI API key)` |
+   | `GROQ_API_KEY` | `(your Groq API key - FREE)` |
    | `CSRF_TRUSTED_ORIGINS` | `https://gym-membership-chatbot.onrender.com` |
 
 3. **Create Web Service**
@@ -257,7 +261,7 @@ Lists all Python package dependencies. Key packages:
 - `python-decouple` - Environment variable management
 - `whitenoise` - Static file serving
 - `django-redis` - Caching backend
-- `openai` - OpenAI API client for chatbot
+- `groq` - Groq API client for chatbot (FREE)
 - `qrcode` - QR code generation
 - `Pillow` - Image processing
 
@@ -336,13 +340,13 @@ echo $DATABASE_URL
 ALLOWED_HOSTS=your-service-name.onrender.com,127.0.0.1,localhost
 ```
 
-### Issue 5: OpenAI API Not Working
+### Issue 5: Groq API Not Working
 
 **Solution**:
-- Verify your OpenAI API key is correct
-- Check if the API key has sufficient credits
-- Ensure `OPENAI_API_KEY` environment variable is set in Render
-- Check OpenAI API status at https://status.openai.com
+- Verify your Groq API key is correct (starts with `gsk_`)
+- Ensure `GROQ_API_KEY` environment variable is set in Render
+- Check Groq API status at https://status.groq.com/
+- Groq is FREE - no billing or credits needed!
 
 ### Issue 6: Media Files Persist Problem
 
@@ -607,5 +611,5 @@ All responses are context-aware and backed by real-time database insights.
 
 ---
 
-**Last Updated**: 2025-11-24
-**Configuration Version**: 2.0 (OpenAI Migration)
+**Last Updated**: 2025-11-25
+**Configuration Version**: 3.0 (Groq API - FREE)

@@ -28,7 +28,7 @@ services:
       - key: ALLOWED_HOSTS
         value: "gym-membership-chatbot.onrender.com,*.onrender.com,127.0.0.1,localhost"
 
-      - key: OPENAI_API_KEY
+      - key: GROQ_API_KEY
         sync: false
 
       - key: REDIS_URL
