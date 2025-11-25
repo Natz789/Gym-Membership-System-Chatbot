@@ -489,6 +489,8 @@ def staff_dashboard(request):
 @login_required
 def member_dashboard(request):
     """Member dashboard - view own membership status"""
+    from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+
     user = request.user
 
     # Get current membership
@@ -506,7 +508,7 @@ def member_dashboard(request):
     payment_page = request.GET.get('payment_page', 1)
     try:
         payment_history = payment_paginator.page(payment_page)
-    except:
+    except (PageNotAnInteger, EmptyPage):
         payment_history = payment_paginator.page(1)
 
     # All memberships (history) with pagination
@@ -518,7 +520,7 @@ def member_dashboard(request):
     membership_page = request.GET.get('membership_page', 1)
     try:
         all_memberships = membership_paginator.page(membership_page)
-    except:
+    except (PageNotAnInteger, EmptyPage):
         all_memberships = membership_paginator.page(1)
 
     context = {
