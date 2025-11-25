@@ -211,13 +211,13 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 # ==================== Chatbot Performance Settings ====================
-# Powered by OpenAI API (GPT-4o-mini)
+# Powered by Groq API (FREE - llama-3.3-70b-versatile)
 
-# OpenAI Configuration (Required)
-OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
+# Groq Configuration (Required - FREE API)
+GROQ_API_KEY = config('GROQ_API_KEY', default=None)
 
 # Chatbot Model Parameters
-CHATBOT_MODEL = 'gpt-4o-mini'  # OpenAI model (gpt-4o-mini for cost-effectiveness, gpt-4o for advanced reasoning)
+CHATBOT_MODEL = 'llama-3.3-70b-versatile'  # Groq's fast, FREE model
 CHATBOT_TEMPERATURE = 0.7  # Creativity level (0.0-1.0)
 CHATBOT_TOP_P = 0.9  # Nucleus sampling
 CHATBOT_MAX_TOKENS = 500  # Maximum response length in tokens (increased for detailed recommendations)

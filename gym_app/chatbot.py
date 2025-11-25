@@ -1,6 +1,6 @@
 """
 Enhanced AI Chatbot Engine for Gym Membership System
-Powered by OpenAI API with advanced capabilities
+Powered by Groq API with advanced capabilities
 - Intent detection and intelligent routing
 - Advanced analytics and reporting with full database context
 - Member lookup and management
@@ -9,7 +9,7 @@ Powered by OpenAI API with advanced capabilities
 - Audit logging for all operations
 - Gym-specific recommendations using comprehensive database insights
 
-Uses OpenAI API (GPT-4o) for intelligent, context-aware responses
+Uses Groq API (FREE) for fast, intelligent, context-aware responses
 """
 
 import uuid
@@ -25,14 +25,14 @@ from .chatbot_tools import ChatbotTools
 from .chatbot_analytics import AnalyticsEngine
 from datetime import date, timedelta
 import json
-from openai import OpenAI
+from groq import Groq as GroqClient
 
 
 class GymChatbot:
-    """AI-powered chatbot for gym assistance - Powered by OpenAI API"""
+    """AI-powered chatbot for gym assistance - Powered by Groq API (FREE)"""
 
-    # OpenAI API Configuration
-    MODEL = 'gpt-4o-mini'  # Fast, cost-effective OpenAI model
+    # Groq API Configuration (FREE)
+    MODEL = 'llama-3.3-70b-versatile'  # Fast, high-quality FREE model from Groq
     TEMPERATURE = 0.7
     TOP_P = 0.9
     MAX_TOKENS = 500  # Increased for detailed recommendations
@@ -48,27 +48,28 @@ class GymChatbot:
         self.conversation = None
         self.conversation_history = []
 
-        # Initialize OpenAI client (required)
-        self.openai_api_key = config('OPENAI_API_KEY', default=None)
-        self.openai_client = None
+        # Initialize Groq client (required - FREE API)
+        self.groq_api_key = config('GROQ_API_KEY', default=None)
+        self.groq_client = None
 
-        if not self.openai_api_key:
-            print("ERROR: OPENAI_API_KEY environment variable is not set!")
+        if not self.groq_api_key:
+            print("ERROR: GROQ_API_KEY environment variable is not set!")
             raise ValueError(
-                "OPENAI_API_KEY environment variable is required. "
-                "Please set your OpenAI API key to use the chatbot."
+                "GROQ_API_KEY environment variable is required. "
+                "Please set your Groq API key to use the chatbot. "
+                "Get your FREE key at https://console.groq.com/"
             )
 
         try:
-            # Initialize OpenAI client with API key
-            print(f"Initializing OpenAI client with API key: {self.openai_api_key[:8]}...")
-            self.openai_client = OpenAI(api_key=self.openai_api_key)
-            print("OpenAI client initialized successfully")
+            # Initialize Groq client with API key (FREE)
+            print(f"Initializing Groq client with API key: {self.groq_api_key[:8]}...")
+            self.groq_client = GroqClient(api_key=self.groq_api_key)
+            print("Groq client initialized successfully")
         except Exception as e:
             import traceback
-            print(f"ERROR initializing OpenAI client: {str(e)}")
+            print(f"ERROR initializing Groq client: {str(e)}")
             print(f"Full traceback:\n{traceback.format_exc()}")
-            raise RuntimeError(f"Failed to initialize OpenAI client: {str(e)}")
+            raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
 
         # Initialize tools for advanced features
         self.tools = ChatbotTools(user)
@@ -659,13 +660,12 @@ COMMON MISTAKES:
                 # Streaming response
                 return self._chat_stream(messages, user_message, start_time, intent)
             else:
-                # Use OpenAI API for response
-                response = self.openai_client.chat.completions.create(
+                # Use Groq API for response (FREE)
+                response = self.groq_client.chat.completions.create(
                     model=self.MODEL,
                     messages=messages,
                     temperature=self.TEMPERATURE,
-                    max_tokens=self.MAX_TOKENS,
-                    top_p=self.TOP_P
+                    max_tokens=self.MAX_TOKENS
                 )
                 assistant_message = response.choices[0].message.content
 
@@ -726,16 +726,15 @@ COMMON MISTAKES:
             }
 
     def _chat_stream(self, messages, user_message, start_time, intent='informational'):
-        """Handle streaming responses via OpenAI API"""
+        """Handle streaming responses via Groq API (FREE)"""
         try:
             full_response = ""
-            # OpenAI streaming
-            stream = self.openai_client.chat.completions.create(
+            # Groq streaming
+            stream = self.groq_client.chat.completions.create(
                 model=self.MODEL,
                 messages=messages,
                 temperature=self.TEMPERATURE,
                 max_tokens=self.MAX_TOKENS,
-                top_p=self.TOP_P,
                 stream=True
             )
             for chunk in stream:
