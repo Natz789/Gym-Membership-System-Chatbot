@@ -55,19 +55,27 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.5.0/qrcode.min.js"></script>
 <script>
     // Generate QR code for membership reference
-    const membershipData = {
-        user_id: {{ user.id }},
-        username: '{{ user.username }}',
-        timestamp: new Date().getTime()
-    };
+    document.addEventListener('DOMContentLoaded', function() {
+        const qrContainer = document.getElementById("kiosk-qr");
+        if (qrContainer && typeof QRCode !== 'undefined') {
+            const membershipData = {
+                user_id: {{ user.id }},
+                username: '{{ user.username }}',
+                timestamp: new Date().getTime()
+            };
 
-    new QRCode(document.getElementById("kiosk-qr"), {
-        text: JSON.stringify(membershipData),
-        width: 200,
-        height: 200,
-        colorDark: "#0a0a0a",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
+            // Clear any existing content
+            qrContainer.innerHTML = '';
+
+            new QRCode(qrContainer, {
+                text: JSON.stringify(membershipData),
+                width: 200,
+                height: 200,
+                colorDark: "#0a0a0a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
     });
 </script>
 {% endif %}
