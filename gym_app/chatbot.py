@@ -53,6 +53,7 @@ class GymChatbot:
         self.openai_client = None
 
         if not self.openai_api_key:
+            print("ERROR: OPENAI_API_KEY environment variable is not set!")
             raise ValueError(
                 "OPENAI_API_KEY environment variable is required. "
                 "Please set your OpenAI API key to use the chatbot."
@@ -60,8 +61,13 @@ class GymChatbot:
 
         try:
             # Initialize OpenAI client with API key
+            print(f"Initializing OpenAI client with API key: {self.openai_api_key[:8]}...")
             self.openai_client = OpenAI(api_key=self.openai_api_key)
+            print("OpenAI client initialized successfully")
         except Exception as e:
+            import traceback
+            print(f"ERROR initializing OpenAI client: {str(e)}")
+            print(f"Full traceback:\n{traceback.format_exc()}")
             raise RuntimeError(f"Failed to initialize OpenAI client: {str(e)}")
 
         # Initialize tools for advanced features
@@ -694,8 +700,14 @@ COMMON MISTAKES:
                 }
 
         except Exception as e:
+            import traceback
             error_msg = str(e)
+            error_traceback = traceback.format_exc()
             friendly_error = f"Chatbot service is temporarily unavailable. Please try again later."
+
+            # Print error to console/logs for debugging
+            print(f"ERROR in chatbot._chat_with_ai: {error_msg}")
+            print(f"Full traceback:\n{error_traceback}")
 
             # Log error
             if self.user:
