@@ -83,12 +83,23 @@
                 </div>
                 <div class="summary-row">
                     <span>Start Date:</span>
-                    <strong>Today</strong>
+                    <strong>Upon Approval</strong>
                 </div>
                 <div class="summary-row">
                     <span>Total Amount:</span>
                     <strong>₱{{ plan.price }}</strong>
                 </div>
+            </div>
+
+            <!-- Confirmation Checkbox -->
+            <div style="background: #f0f4ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid var(--secondary-blue);">
+                <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                    <input type="checkbox" name="confirm_information" id="confirm_information" required style="margin-top: 0.3rem; width: 18px; height: 18px; cursor: pointer;">
+                    <span style="color: var(--dark-gray); font-weight: 500;">
+                        <i class="fas fa-check-circle" style="color: var(--secondary-blue); margin-right: 0.5rem;"></i>
+                        I confirm the information is correct and understand my membership starts upon staff approval
+                    </span>
+                </label>
             </div>
 
             <button type="submit" class="btn btn-gold btn-submit">

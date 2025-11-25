@@ -144,10 +144,17 @@
                 <i class="fas fa-clock"></i> {{ plan.duration_days }} Days Access
             </div>
 
+            <!-- Show prices only to authenticated members -->
+            {% if user.is_authenticated and user.role == 'member' %}
             <div class="plan-price">
                 ₱{{ plan.price }}
                 <small>/ {{ plan.duration_days }} days</small>
             </div>
+            {% else %}
+            <div style="padding: 0.75rem; background: #f0f4ff; border-radius: 8px; text-align: center; color: var(--primary-blue); font-weight: 500; font-size: 0.9rem;">
+                <i class="fas fa-lock"></i> Login to see pricing
+            </div>
+            {% endif %}
 
             <p class="plan-description">
                 {{ plan.description|default:"Full access to all gym facilities, equipment, and amenities for the duration of your membership." }}

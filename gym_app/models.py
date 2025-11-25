@@ -214,8 +214,18 @@ class UserMembership(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    
-     # NEW FIELDS FOR CANCELLATION
+
+    # Approval tracking - start date is based on approval, not purchase
+    approved_at = models.DateTimeField(null=True, blank=True, help_text="When the membership was approved by staff")
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_memberships'
+    )
+
+    # Cancellation tracking
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancelled_by = models.ForeignKey(
         User,
@@ -236,14 +246,19 @@ class UserMembership(models.Model):
         ordering = ['-start_date']
     
     def save(self, *args, **kwargs):
-        """Auto-calculate end_date based on plan duration"""
-        if not self.end_date and self.start_date and self.plan:
+        """Auto-calculate end_date based on plan duration and approval"""
+        # If approved, use approval date as start date
+        if self.approved_at and not self.start_date:
+            self.start_date = self.approved_at.date()
+
+        # Auto-calculate end_date based on plan duration
+        if self.start_date and self.plan:
             self.end_date = self.start_date + timedelta(days=self.plan.duration_days)
-        
+
         # Auto-update status based on dates
-        if self.end_date < date.today():
+        if self.end_date and self.end_date < date.today():
             self.status = 'expired'
-        
+
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -258,6 +273,13 @@ class UserMembership(models.Model):
         if self.end_date >= date.today():
             return (self.end_date - date.today()).days
         return 0
+
+    def approve(self, user=None):
+        """Approve the membership - sets start date to today and activates it"""
+        self.status = 'active'
+        self.approved_at = timezone.now()
+        self.approved_by = user
+        self.save()
 
     def cancel(self, user=None, reason=''):
         """Cancel the membership"""
